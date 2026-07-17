@@ -1,0 +1,1367 @@
+<title>IRAS — ACRA Compliance Triage System</title>
+<style>
+/* ─── DESIGN TOKENS ─────────────────────────────────────────────── */
+:root {
+  /* Grounds */
+  --bg:          #F2F4F7;
+  --surface:     #FFFFFF;
+  --panel:       #FFFFFF;
+  --panel-raised:#FFFFFF;
+
+  /* Ink */
+  --ink-1:       #0D1B2A;   /* primary */
+  --ink-2:       #3A4E63;   /* secondary */
+  --ink-3:       #7A8FA4;   /* tertiary/disabled */
+  --ink-inv:     #F0F4FA;   /* on dark */
+
+  /* Accent — IRAS institutional blue */
+  --accent:      #1249A3;
+  --accent-mid:  #1D5FCC;
+  --accent-light:#E4ECFA;
+  --accent-faint:#F0F5FD;
+
+  /* Semantic */
+  --ok:          #076B4A;
+  --ok-mid:      #0E9067;
+  --ok-bg:       #E5F5EF;
+  --ok-border:   #A8DFC8;
+  --risk:        #A8160D;
+  --risk-mid:    #CC1B11;
+  --risk-bg:     #FDF1F0;
+  --risk-border: #F5ABA7;
+  --warn:        #8B5500;
+  --warn-bg:     #FDF5E4;
+
+  /* Terminal — agent stream */
+  --term-bg:     #060E1A;
+  --term-border: #0F2035;
+  --term-green:  #3DDB82;
+  --term-green-d:#1E6B42;
+  --term-blue:   #4D9FFF;
+  --term-yellow: #F5B731;
+  --term-red:    #FF5F57;
+  --term-dim:    #2A4A6A;
+  --term-muted:  #4A6A8A;
+  --term-white:  #B8CDE0;
+
+  /* Borders & dividers */
+  --border:      #D5DCE8;
+  --border-soft: #E8EDF5;
+  --divider:     #C8D3E0;
+
+  /* Shadows */
+  --sh-xs: 0 1px 2px rgba(13,27,42,.06);
+  --sh-sm: 0 1px 4px rgba(13,27,42,.08), 0 0 0 1px rgba(13,27,42,.04);
+  --sh-md: 0 4px 16px rgba(13,27,42,.10), 0 1px 4px rgba(13,27,42,.06);
+  --sh-lg: 0 24px 64px rgba(13,27,42,.18), 0 8px 24px rgba(13,27,42,.10);
+
+  /* Type scale */
+  --text-xs:  11px;
+  --text-sm:  12px;
+  --text-base:13px;
+  --text-md:  14px;
+  --text-lg:  16px;
+  --text-xl:  20px;
+
+  /* Radii */
+  --r-sm:  4px;
+  --r-md:  6px;
+  --r-lg:  10px;
+}
+
+/* dark mode intentionally disabled — always render light */
+
+:root[data-theme="light"] {
+  --bg:#F2F4F7; --surface:#FFFFFF; --panel:#FFFFFF; --panel-raised:#FFFFFF;
+  --ink-1:#0D1B2A; --ink-2:#3A4E63; --ink-3:#7A8FA4; --ink-inv:#F0F4FA;
+  --accent:#1249A3; --accent-mid:#1D5FCC; --accent-light:#E4ECFA; --accent-faint:#F0F5FD;
+  --ok:#076B4A; --ok-mid:#0E9067; --ok-bg:#E5F5EF; --ok-border:#A8DFC8;
+  --risk:#A8160D; --risk-mid:#CC1B11; --risk-bg:#FDF1F0; --risk-border:#F5ABA7;
+  --warn:#8B5500; --warn-bg:#FDF5E4;
+  --border:#D5DCE8; --border-soft:#E8EDF5; --divider:#C8D3E0;
+  --term-bg:#060E1A; --term-border:#0F2035;
+}
+
+:root[data-theme="dark"] {
+  --bg:#060E1A; --surface:#0B1625; --panel:#0F1E30; --panel-raised:#152337;
+  --ink-1:#D8E6F5; --ink-2:#7A9BB8; --ink-3:#3A5570; --ink-inv:#0D1B2A;
+  --accent:#4D84E0; --accent-mid:#6699F0; --accent-light:#0D2050; --accent-faint:#091835;
+  --ok:#34C884; --ok-mid:#4DD99A; --ok-bg:#041A10; --ok-border:#0D4A28;
+  --risk:#FF6B63; --risk-mid:#FF8880; --risk-bg:#1C0606; --risk-border:#6B1210;
+  --warn:#F5B731; --warn-bg:#1A0E00;
+  --border:#1A3050; --border-soft:#112040; --divider:#142840;
+  --term-bg:#03080F; --term-border:#0A1828;
+}
+
+/* ─── RESET & BASE ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; height: 100%; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink-1);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ─── HEADER ─────────────────────────────────────────────────────── */
+.header {
+  height: 52px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 50;
+}
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-mid) 40%, transparent 100%);
+  opacity: 0.6;
+}
+.h-left { display: flex; align-items: center; gap: 0; }
+.h-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding-right: 20px;
+  margin-right: 20px;
+  border-right: 1px solid var(--border);
+}
+.h-mark {
+  width: 30px; height: 30px;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+}
+.h-mark svg { fill: #fff; width: 16px; height: 16px; }
+.h-org {
+  display: flex; flex-direction: column; gap: 1px;
+}
+.h-org-name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--ink-1);
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+.h-org-sub {
+  font-size: 10px;
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  font-weight: 500;
+}
+.h-system {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--ink-2);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.h-right {
+  display: flex; align-items: center; gap: 16px;
+}
+.h-meta {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.h-officer {
+  display: flex; align-items: center; gap: 8px;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.h-avatar {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+.h-status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--ok-mid);
+  display: inline-block;
+}
+
+/* ─── WORKSPACE ─────────────────────────────────────────────────── */
+.workspace {
+  display: grid;
+  grid-template-columns: 320px 1fr 340px;
+  flex: 1;
+  overflow: hidden;
+  background: var(--bg);
+  gap: 0;
+}
+
+/* ─── COLUMN SHARED ─────────────────────────────────────────────── */
+.col {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+.col:last-child { border-right: none; }
+.col-head {
+  padding: 12px 16px 11px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+.col-head.dark-head {
+  background: var(--term-bg);
+  border-bottom: 1px solid var(--term-border);
+}
+.col-eyebrow {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 3px;
+  display: flex; align-items: center; gap: 6px;
+}
+.col-eyebrow.inv { color: var(--term-dim); }
+.col-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink-1);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.col-title.inv { color: var(--term-white); }
+.col-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+}
+.col-body::-webkit-scrollbar { width: 3px; }
+.col-body::-webkit-scrollbar-track { background: transparent; }
+.col-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ─── COL 1: INTAKE ─────────────────────────────────────────────── */
+.ingest-btn {
+  width: 100%;
+  padding: 9px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  display: flex; align-items: center; gap: 10px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ink-1);
+  cursor: pointer;
+  margin-bottom: 14px;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  text-align: left;
+  letter-spacing: 0.01em;
+  box-shadow: var(--sh-xs);
+}
+.ingest-btn:hover:not(:disabled) {
+  border-color: var(--accent-mid);
+  background: var(--accent-faint);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+.ingest-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ingest-icon {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ingest-icon svg { fill: #fff; width: 14px; height: 14px; }
+.ingest-label { flex: 1; }
+.ingest-label-main { font-size: var(--text-base); font-weight: 600; color: var(--ink-1); line-height: 1.2; }
+.ingest-label-sub { font-size: var(--text-xs); font-weight: 400; color: var(--ink-3); margin-top: 1px; }
+.live-badge {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ok);
+  background: var(--ok-bg);
+  border: 1px solid var(--ok-border);
+  border-radius: 99px;
+  padding: 2px 7px;
+  flex-shrink: 0;
+}
+.live-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--ok-mid);
+  animation: livepulse 1.8s ease-in-out infinite;
+}
+@keyframes livepulse {
+  0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+}
+
+/* ACRA card */
+.acra-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: var(--sh-xs);
+  transition: border-color 0.25s, box-shadow 0.25s;
+  animation: cardin 0.3s ease both;
+}
+@keyframes cardin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
+.acra-card.st-processing {
+  border-color: var(--accent-mid);
+  box-shadow: 0 0 0 3px var(--accent-light), var(--sh-sm);
+}
+.acra-card.st-ok { border-color: var(--ok-border); }
+.acra-card.st-risk {
+  border-color: var(--risk-border);
+  box-shadow: 0 0 0 3px var(--risk-bg);
+}
+.acra-card-top {
+  padding: 10px 14px 8px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.acra-uen {
+  font-family: 'SF Mono', 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent-mid);
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+.acra-type {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+.acra-card-body { padding: 8px 14px 10px; }
+.acra-name {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink-1);
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+  line-height: 1.25;
+}
+.acra-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.acra-meta-item {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  display: flex; align-items: center; gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.acra-meta-item strong { color: var(--ink-2); font-weight: 500; }
+.acra-route {
+  padding: 6px 14px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-top: 1px solid var(--border-soft);
+}
+.acra-route.pending { color: var(--accent); background: var(--accent-faint); }
+.acra-route.ok { color: var(--ok); background: var(--ok-bg); }
+.acra-route.risk { color: var(--risk); background: var(--risk-bg); }
+.acra-spinner {
+  width: 10px; height: 10px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── COL 2: TERMINAL ───────────────────────────────────────────── */
+.terminal {
+  flex: 1;
+  background: var(--term-bg);
+  font-family: 'SF Mono', 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 11.5px;
+  line-height: 1.75;
+  padding: 14px 16px;
+  overflow-y: auto;
+  position: relative;
+  /* Subtle scan-line atmosphere */
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 22px,
+    rgba(255,255,255,0.012) 22px,
+    rgba(255,255,255,0.012) 23px
+  );
+}
+.terminal::-webkit-scrollbar { width: 3px; }
+.terminal::-webkit-scrollbar-thumb { background: var(--term-dim); border-radius: 2px; }
+
+.t-agent-badge {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--term-border);
+}
+.t-agent-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--term-dim);
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+.t-agent-dot.active { background: var(--term-green); box-shadow: 0 0 6px var(--term-green-d); }
+.t-agent-name {
+  font-size: 10.5px; font-weight: 700;
+  color: var(--term-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.t-agent-version {
+  font-size: 10px; color: var(--term-dim);
+  margin-left: auto;
+}
+
+/* Log lines */
+.t-line {
+  display: flex; gap: 0;
+  animation: tfadein 0.2s ease;
+}
+@keyframes tfadein { from { opacity: 0; } to { opacity: 1; } }
+.t-ts {
+  color: var(--term-dim);
+  min-width: 72px;
+  flex-shrink: 0;
+  user-select: none;
+}
+.t-tag {
+  min-width: 52px;
+  flex-shrink: 0;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.t-msg { color: var(--term-white); flex: 1; }
+
+.t-line.l-thought .t-tag { color: var(--term-muted); }
+.t-line.l-thought .t-msg  { color: #7A9BB8; }
+.t-line.l-tool    .t-tag  { color: var(--term-blue); }
+.t-line.l-tool    .t-msg  { color: #90B8F0; }
+.t-line.l-result  .t-tag  { color: var(--term-green); }
+.t-line.l-result  .t-msg  { color: var(--term-white); }
+.t-line.l-flag    .t-tag  { color: var(--term-red); }
+.t-line.l-flag    .t-msg  { color: #FFAAAA; font-weight: 600; }
+.t-line.l-ok      .t-tag  { color: var(--term-green); }
+.t-line.l-ok      .t-msg  { color: #A8F0C8; }
+.t-line.l-section .t-tag  { color: var(--term-yellow); }
+.t-line.l-section .t-msg  { color: var(--term-yellow); font-weight: 700; letter-spacing: 0.04em; }
+.t-sep {
+  border: none;
+  border-top: 1px solid var(--term-border);
+  margin: 8px 0;
+}
+.t-cursor {
+  display: inline-block;
+  width: 7px; height: 13px;
+  background: var(--term-green);
+  vertical-align: text-bottom;
+  margin-left: 2px;
+  animation: tblink 1s step-end infinite;
+}
+@keyframes tblink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* ─── COL 3: TRIAGE ─────────────────────────────────────────────── */
+.triage-stats {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.stat-tile {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  box-shadow: var(--sh-xs);
+}
+.stat-val {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.stat-val.c-ok   { color: var(--ok-mid); }
+.stat-val.c-risk { color: var(--risk-mid); }
+.stat-lbl {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.section-rule {
+  display: flex; align-items: center; gap: 8px;
+  margin: 12px 0 8px;
+}
+.section-rule-label {
+  font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-3); white-space: nowrap;
+}
+.section-rule-line { flex: 1; height: 1px; background: var(--border); }
+
+/* Triage card */
+.triage-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: var(--sh-xs);
+  animation: triagein 0.35s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes triagein { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.triage-card.tc-risk {
+  border-left: 3px solid var(--risk-mid);
+  border-color: var(--risk-border);
+}
+.triage-card.tc-ok {
+  border-left: 3px solid var(--ok-mid);
+  border-color: var(--ok-border);
+}
+.tc-head {
+  padding: 10px 14px 8px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+}
+.tc-name { font-size: var(--text-base); font-weight: 600; color: var(--ink-1); line-height: 1.25; }
+.tc-uen { font-family: 'SF Mono','Cascadia Mono','Consolas','Courier New',monospace; font-size: var(--text-xs); color: var(--ink-3); margin-top: 2px; letter-spacing: 0.04em; }
+.tc-pill {
+  flex-shrink: 0;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  border-radius: 99px; padding: 3px 8px;
+  white-space: nowrap;
+}
+.tc-pill.p-risk { background: var(--risk-bg); color: var(--risk-mid); border: 1px solid var(--risk-border); }
+.tc-pill.p-ok   { background: var(--ok-bg);   color: var(--ok-mid);   border: 1px solid var(--ok-border); }
+.tc-reason {
+  padding: 0 14px 10px;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  line-height: 1.6;
+  border-bottom: 1px solid var(--border-soft);
+}
+.tc-actions {
+  display: flex;
+}
+.tc-btn {
+  flex: 1; padding: 8px; border: none; background: none;
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.02em;
+  cursor: pointer; color: var(--ink-3);
+  transition: background 0.12s, color 0.12s;
+}
+.tc-btn:hover { background: var(--bg); color: var(--ink-1); }
+.tc-btn.primary { color: var(--accent); }
+.tc-btn.primary:hover { background: var(--accent-faint); }
+.tc-btn + .tc-btn { border-left: 1px solid var(--border-soft); }
+
+/* Empty state */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 32px 16px; text-align: center;
+}
+.empty-icon { opacity: 0.18; }
+.empty-label { font-size: var(--text-base); font-weight: 500; color: var(--ink-2); }
+.empty-hint  { font-size: var(--text-xs); color: var(--ink-3); }
+
+/* ─── MODAL ──────────────────────────────────────────────────────── */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(6,14,26,0.65);
+  backdrop-filter: blur(6px) saturate(0.8);
+  z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+.modal-bg.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  width: 100%; max-width: 840px;
+  max-height: 88vh;
+  display: flex; flex-direction: column;
+  box-shadow: var(--sh-lg);
+  transform: translateY(12px) scale(0.99);
+  transition: transform 0.22s cubic-bezier(0.22,1,0.36,1);
+  overflow: hidden;
+}
+.modal-bg.open .modal { transform: none; }
+
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+}
+.modal-ref {
+  font-family: 'SF Mono','Cascadia Mono','Consolas','Courier New',monospace;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 3px 8px;
+  letter-spacing: 0.04em;
+}
+.modal-title { font-size: var(--text-lg); font-weight: 600; color: var(--ink-1); flex: 1; letter-spacing: -0.02em; }
+.modal-close {
+  width: 30px; height: 30px;
+  background: none; border: 1px solid var(--border);
+  border-radius: var(--r-sm); color: var(--ink-3);
+  cursor: pointer; font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+.modal-close:hover { background: var(--bg); color: var(--ink-1); }
+.modal-body {
+  flex: 1; overflow-y: auto;
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+.modal-body::-webkit-scrollbar { width: 3px; }
+.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 8px; justify-content: flex-end;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+/* Modal sub-components */
+.m-section { display: flex; flex-direction: column; gap: 10px; }
+.m-section-head {
+  font-size: var(--text-xs); font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-3);
+  display: flex; align-items: center; gap: 8px;
+}
+.m-section-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+.m-field { display: flex; flex-direction: column; gap: 3px; }
+.m-field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.m-field-value { font-size: var(--text-base); color: var(--ink-1); font-weight: 500; }
+.m-field-value.mono { font-family: 'SF Mono','Cascadia Mono','Consolas','Courier New',monospace; font-size: var(--text-sm); color: var(--accent-mid); letter-spacing: 0.04em; }
+
+/* Alert/ok banners */
+.m-alert {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--risk-border);
+  background: var(--risk-bg);
+}
+.m-alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.m-alert-body { font-size: var(--text-base); color: var(--ink-1); line-height: 1.5; }
+.m-alert-body strong { color: var(--risk-mid); }
+.m-ok {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--ok-border);
+  background: var(--ok-bg);
+}
+.m-ok-body { font-size: var(--text-base); color: var(--ink-1); line-height: 1.5; }
+.m-ok-body strong { color: var(--ok-mid); }
+
+/* Agent brief */
+.m-brief {
+  background: var(--term-bg);
+  border: 1px solid var(--term-border);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  font-family: 'SF Mono','Cascadia Mono','Consolas','Courier New',monospace;
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: #7A9BB8;
+  background-image: repeating-linear-gradient(
+    0deg, transparent, transparent 20px,
+    rgba(255,255,255,0.01) 20px, rgba(255,255,255,0.01) 21px
+  );
+}
+.m-brief .c-b { color: var(--term-blue); font-weight: 700; }
+.m-brief .c-g { color: var(--term-green); font-weight: 700; }
+.m-brief .c-r { color: var(--term-red); font-weight: 700; }
+.m-brief .c-y { color: var(--term-yellow); font-weight: 700; }
+.m-brief .c-w { color: var(--term-white); }
+
+/* Cluster table */
+.m-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-md); }
+.m-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.m-table th {
+  padding: 7px 12px;
+  text-align: left;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-3);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.m-table td {
+  padding: 8px 12px;
+  color: var(--ink-1);
+  border-bottom: 1px solid var(--border-soft);
+  font-variant-numeric: tabular-nums;
+}
+.m-table td.mono { font-family: 'SF Mono','Cascadia Mono','Consolas','Courier New',monospace; font-size: var(--text-xs); color: var(--accent-mid); letter-spacing: 0.04em; }
+.m-table tr:last-child td { border-bottom: none; }
+.m-table tr:hover td { background: var(--bg); }
+
+/* Email draft */
+.email-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.email-meta-bar {
+  padding: 10px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.email-meta-row {
+  display: flex; gap: 8px;
+  font-size: var(--text-xs);
+}
+.email-meta-key { color: var(--ink-3); font-weight: 700; min-width: 38px; letter-spacing: 0.04em; }
+.email-meta-val { color: var(--ink-2); }
+.email-editor {
+  width: 100%; padding: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  font-size: var(--text-base);
+  line-height: 1.7;
+  color: var(--ink-1);
+  background: var(--panel);
+  border: none; outline: none;
+  resize: vertical; min-height: 140px;
+  transition: background 0.12s;
+}
+.email-editor:focus { background: var(--accent-faint); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--r-md);
+  font-size: var(--text-base); font-weight: 600;
+  cursor: pointer; border: 1px solid transparent;
+  transition: background 0.12s, box-shadow 0.12s, border-color 0.12s;
+  letter-spacing: 0.01em; white-space: nowrap;
+}
+.btn-ghost {
+  background: var(--panel);
+  border-color: var(--border);
+  color: var(--ink-2);
+}
+.btn-ghost:hover { background: var(--bg); color: var(--ink-1); }
+.btn-primary {
+  background: var(--accent); border-color: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--accent-mid); }
+.btn-danger {
+  background: var(--risk-mid); border-color: var(--risk-mid);
+  color: #fff;
+}
+.btn-danger:hover { background: var(--risk); }
+.btn-ok {
+  background: var(--ok); border-color: var(--ok);
+  color: #fff;
+}
+.btn-ok:hover { background: var(--ok-mid); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: var(--ink-1);
+  color: var(--ink-inv);
+  border-radius: var(--r-md);
+  padding: 10px 16px;
+  font-size: var(--text-base); font-weight: 500;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: var(--sh-lg);
+  z-index: 400;
+  transform: translateY(20px) scale(0.97);
+  opacity: 0;
+  transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), opacity 0.25s;
+  pointer-events: none;
+  max-width: 380px;
+}
+.toast.show { transform: none; opacity: 1; pointer-events: all; }
+.toast-icon { font-size: 15px; flex-shrink: 0; }
+</style>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="h-left">
+    <div class="h-brand">
+      <div class="h-mark">
+        <svg viewBox="0 0 16 16"><path d="M8 1L10.5 6H14L10.8 9.2 12 14 8 11.5 4 14l1.2-4.8L2 6h3.5z"/></svg>
+      </div>
+      <div class="h-org">
+        <div class="h-org-name">IRAS</div>
+        <div class="h-org-sub">Inland Revenue Authority of Singapore</div>
+      </div>
+    </div>
+    <span class="h-system">Corporate Compliance Automation &nbsp;/&nbsp; ACRA Onboarding &amp; Risk Triage</span>
+  </div>
+  <div class="h-right">
+    <span class="h-meta" id="clockDisplay">SGT 08:42 &nbsp;·&nbsp; 2026-07-17</span>
+    <div class="h-officer">
+      <div class="h-avatar">LT</div>
+      <span><span class="h-status-dot"></span>&nbsp; Officer Lim T. &nbsp;·&nbsp; Corporate Tax Division</span>
+    </div>
+  </div>
+</header>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+  <!-- COL 1: ACRA INTAKE -->
+  <div class="col">
+    <div class="col-head">
+      <div class="col-eyebrow">
+        Data Intake
+        <div class="live-badge"><div class="live-dot"></div>Live</div>
+      </div>
+      <div class="col-title">ACRA Registry Feed</div>
+    </div>
+    <div class="col-body">
+      <button class="ingest-btn" id="ingestBtn" onclick="startIngest()">
+        <div class="ingest-icon">
+          <svg viewBox="0 0 16 16"><path d="M8 2v8M5 7l3 3 3-3M3 12h10" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="ingest-label">
+          <div class="ingest-label-main">Run Daily ACRA Ingest</div>
+          <div class="ingest-label-sub">4 new UENs pending — 2026-07-17 batch</div>
+        </div>
+      </button>
+      <div id="acraCards"></div>
+    </div>
+  </div>
+
+  <!-- COL 2: AGENT TERMINAL -->
+  <div class="col">
+    <div class="col-head dark-head">
+      <div class="col-eyebrow inv">Agent Reasoning Stream</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div class="col-title inv">IRAS Compliance Automation Agent</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--term-muted);font-family:'SF Mono','Cascadia Mono','Consolas','Courier New',monospace;" id="agentStatusLabel">
+          <div class="t-agent-dot" id="agentDot"></div>
+          <span id="agentStatus">Idle</span>
+        </div>
+      </div>
+    </div>
+    <div class="terminal" id="terminal">
+      <div class="t-agent-badge">
+        <div class="t-agent-dot" id="termDot"></div>
+        <div class="t-agent-name">v2.1 — ACRA Onboarding &amp; Risk-Screening Engine</div>
+        <div class="t-agent-version">claude-3.5-sonnet</div>
+      </div>
+      <div class="t-line l-thought">
+        <span class="t-ts">08:42:00</span>
+        <span class="t-tag">IDLE&nbsp;&nbsp;</span>
+        <span class="t-msg">Standing by. Awaiting ACRA ingest trigger from officer dashboard.</span>
+      </div>
+      <span class="t-cursor" id="cursor"></span>
+    </div>
+  </div>
+
+  <!-- COL 3: TRIAGE QUEUE -->
+  <div class="col">
+    <div class="col-head">
+      <div class="col-eyebrow">Human-in-the-Loop</div>
+      <div class="col-title">Officer Triage Queue</div>
+    </div>
+    <div class="col-body">
+      <div class="triage-stats">
+        <div class="stat-tile">
+          <div class="stat-val c-ok" id="statOnboard">0</div>
+          <div class="stat-lbl">Onboarding</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-val c-risk" id="statRisk">0</div>
+          <div class="stat-lbl">High-Risk Alerts</div>
+        </div>
+      </div>
+      <div id="triageQueue">
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>
+          </div>
+          <div class="empty-label">No cases pending review</div>
+          <div class="empty-hint">Run the ACRA ingest to begin agent processing</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-ref" id="modalRef">REF —</span>
+      <div class="modal-title" id="modalTitle">Case Review</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toastIcon">✓</span>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────
+const companies = [
+  { uen:'202611223M', name:'Alpha Tech Solutions Pte Ltd', regDate:'2026-06-01', postal:'048616', addr:'16 Raffles Quay, #20-01', risk:'ok' },
+  { uen:'202655431G', name:'Apex Shell Logistics',         regDate:'2026-06-02', postal:'618494', addr:'2 Yishun Industrial St 1, #04-12', risk:'risk' },
+  { uen:'202699882K', name:'Zenith Trade Singapore',       regDate:'2026-06-02', postal:'618494', addr:'2 Yishun Industrial St 1, #04-12', risk:'risk' },
+  { uen:'202677114D', name:'Quantum Holding Group',        regDate:'2026-06-02', postal:'618494', addr:'2 Yishun Industrial St 1, #04-12', risk:'risk' },
+];
+
+let onboardCount = 0, riskCount = 0, tStart = 0;
+
+// ─── TIME ────────────────────────────────────────────────────────────
+function ts(offset = 0) {
+  const d = new Date(Date.now() + offset);
+  return d.toLocaleTimeString('en-SG', { hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+function updateClock() {
+  const now = new Date();
+  const t = now.toLocaleTimeString('en-SG', { hour12:false, hour:'2-digit', minute:'2-digit' });
+  document.getElementById('clockDisplay').textContent = `SGT ${t} · 2026-07-17`;
+}
+setInterval(updateClock, 15000);
+
+// ─── TERMINAL ────────────────────────────────────────────────────────
+let logDelay = 0;
+function logLine(tag, msg, cls, delay = 0) {
+  return new Promise(res => {
+    setTimeout(() => {
+      const term = document.getElementById('terminal');
+      const cursor = document.getElementById('cursor');
+      const line = document.createElement('div');
+      line.className = `t-line ${cls}`;
+      line.innerHTML = `<span class="t-ts">${ts(logDelay)}</span><span class="t-tag">${tag.padEnd(6)}</span><span class="t-msg">${msg}</span>`;
+      term.insertBefore(line, cursor);
+      term.scrollTop = term.scrollHeight;
+      res();
+    }, delay);
+  });
+}
+function logSep(delay = 0) {
+  return new Promise(res => {
+    setTimeout(() => {
+      const term = document.getElementById('terminal');
+      const cursor = document.getElementById('cursor');
+      const el = document.createElement('hr');
+      el.className = 't-sep';
+      term.insertBefore(el, cursor);
+      term.scrollTop = term.scrollHeight;
+      res();
+    }, delay);
+  });
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function setAgentStatus(label, active) {
+  document.getElementById('agentStatus').textContent = label;
+  document.getElementById('agentDot').classList.toggle('active', active);
+  document.getElementById('termDot').classList.toggle('active', active);
+}
+
+// ─── ACRA CARDS ──────────────────────────────────────────────────────
+function renderCard(c) {
+  const wrap = document.createElement('div');
+  wrap.className = 'acra-card st-processing';
+  wrap.id = `card-${c.uen}`;
+  wrap.innerHTML = `
+    <div class="acra-card-top">
+      <span class="acra-uen">${c.uen}</span>
+      <span class="acra-type">Pte Ltd</span>
+    </div>
+    <div class="acra-card-body">
+      <div class="acra-name">${c.name}</div>
+      <div class="acra-meta">
+        <span class="acra-meta-item">📅 <strong>${c.regDate}</strong></span>
+        <span class="acra-meta-item">📍 ${c.addr}</span>
+        <span class="acra-meta-item">📮 ${c.postal}</span>
+      </div>
+    </div>
+    <div class="acra-route pending" id="rt-${c.uen}">
+      <div class="acra-spinner"></div> Processing&hellip;
+    </div>`;
+  document.getElementById('acraCards').appendChild(wrap);
+}
+function routeCard(uen, state, label, icon = '') {
+  const card = document.getElementById(`card-${uen}`);
+  if (!card) return;
+  card.className = `acra-card st-${state}`;
+  const rt = document.getElementById(`rt-${uen}`);
+  rt.className = `acra-route ${state}`;
+  rt.innerHTML = `${icon} ${label}`;
+}
+
+// ─── TRIAGE CARDS ─────────────────────────────────────────────────────
+function addTriageCard(name, uen, type, reason, onReview) {
+  const q = document.getElementById('triageQueue');
+  const empty = q.querySelector('.empty-state');
+  if (empty) q.innerHTML = '';
+
+  const isRisk = type === 'risk';
+  const div = document.createElement('div');
+  div.className = `triage-card tc-${isRisk ? 'risk' : 'ok'}`;
+  div.innerHTML = `
+    <div class="tc-head">
+      <div>
+        <div class="tc-name">${name}</div>
+        <div class="tc-uen">${uen}</div>
+      </div>
+      <span class="tc-pill ${isRisk ? 'p-risk' : 'p-ok'}">${isRisk ? 'High Risk' : 'Onboarding'}</span>
+    </div>
+    <div class="tc-reason">${reason}</div>
+    <div class="tc-actions">
+      <button class="tc-btn" onclick="this.closest('.triage-card').remove(); updateStats(${isRisk ? '0,-1' : '-1,0'}); showToast('Case archived.','ℹ️')">Dismiss</button>
+      <button class="tc-btn primary" onclick="${onReview}">Review &amp; Act →</button>
+    </div>`;
+  q.appendChild(div);
+}
+function updateStats(dOnboard = 0, dRisk = 0) {
+  onboardCount = Math.max(0, onboardCount + dOnboard);
+  riskCount    = Math.max(0, riskCount + dRisk);
+  document.getElementById('statOnboard').textContent = onboardCount;
+  document.getElementById('statRisk').textContent    = riskCount;
+}
+
+// ─── INGEST FLOW ──────────────────────────────────────────────────────
+async function startIngest() {
+  document.getElementById('ingestBtn').disabled = true;
+  document.getElementById('acraCards').innerHTML = '';
+  document.getElementById('triageQueue').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg></div>
+      <div class="empty-label">No cases pending review</div>
+      <div class="empty-hint">Run the ACRA ingest to begin agent processing</div>
+    </div>`;
+  onboardCount = 0; riskCount = 0;
+  document.getElementById('statOnboard').textContent = '0';
+  document.getElementById('statRisk').textContent = '0';
+
+  const term = document.getElementById('terminal');
+  term.innerHTML = `
+    <div class="t-agent-badge">
+      <div class="t-agent-dot active" id="termDot"></div>
+      <div class="t-agent-name">v2.1 — ACRA Onboarding &amp; Risk-Screening Engine</div>
+      <div class="t-agent-version">claude-3.5-sonnet</div>
+    </div>
+    <span class="t-cursor" id="cursor"></span>`;
+  setAgentStatus('Running', true);
+
+  tStart = 0;
+  const L = (tag, msg, cls) => { logLine(tag, msg, cls); tStart += 280; };
+
+  L('START ', `Ingest job initiated by Officer Lim T. — batch 2026-07-17, 4 UENs queued.`, 'l-section'); await sleep(300);
+  L('TOOL  ', 'get_new_acra_registrations()', 'l-tool'); await sleep(450);
+  L('RESULT', '4 registration records retrieved from ACRA data.gov.sg stream.', 'l-result'); await sleep(350);
+  await logSep();
+
+  // ── Scenario A: Alpha Tech ──
+  renderCard(companies[0]); await sleep(300);
+  L('SECT  ', '── PROCESSING UEN 202611223M ─────────────────────', 'l-section'); await sleep(200);
+  L('THINK ', 'Record 1: Alpha Tech Solutions Pte Ltd. Registered 2026-06-01 at postal 048616 (Raffles Quay CBD). Checking IRAS Core Register.', 'l-thought'); await sleep(750);
+  L('TOOL  ', 'check_internal_iras_register("202611223M")', 'l-tool'); await sleep(600);
+  L('RESULT', 'NOT FOUND in IRAS Core Register → confirmed new entity.', 'l-result'); await sleep(300);
+  L('THINK ', 'Not a known taxpayer. Now checking address clustering for postal 048616 to rule out shell network pattern.', 'l-thought'); await sleep(700);
+  L('TOOL  ', 'detect_address_clustering("048616")', 'l-tool'); await sleep(600);
+  L('RESULT', '1 entity at postal 048616 on 2026-06-01. No clustering detected.', 'l-result'); await sleep(300);
+  L('EVAL  ', 'Clean profile. Single entity, CBD address (Raffles Quay). Route to Tax Welcome Agent. First YA: Nov 2027.', 'l-ok'); await sleep(300);
+  routeCard('202611223M', 'ok', 'Routed → Onboarding Pipeline', '✓');
+  addTriageCard(
+    'Alpha Tech Solutions Pte Ltd', '202611223M', 'ok',
+    'New legitimate registration. CBD address, no clustering. Onboarding letter & YA 2027 filing timeline required.',
+    'openOnboardModal()'
+  );
+  onboardCount++; document.getElementById('statOnboard').textContent = onboardCount;
+  await sleep(600); await logSep();
+
+  // ── Scenario B: Shell Cluster ──
+  renderCard(companies[1]); await sleep(200);
+  L('SECT  ', '── PROCESSING UEN 202655431G ─────────────────────', 'l-section'); await sleep(200);
+  L('THINK ', '"Apex Shell Logistics" — name flagged. Postal 618494, Yishun industrial. Checking register.', 'l-thought'); await sleep(700);
+  L('TOOL  ', 'check_internal_iras_register("202655431G")', 'l-tool'); await sleep(600);
+  L('RESULT', 'NOT FOUND.', 'l-result'); await sleep(250);
+  L('THINK ', 'Checking address clustering — noting other records share postal 618494.', 'l-thought'); await sleep(600);
+  L('TOOL  ', 'detect_address_clustering("618494")', 'l-tool'); await sleep(700);
+  L('FLAG  ', '⚠ ANOMALY: 3 distinct entities at postal 618494 #04-12 on 2026-06-02.', 'l-flag'); await sleep(400);
+
+  renderCard(companies[2]); renderCard(companies[3]); await sleep(300);
+
+  L('TOOL  ', 'check_internal_iras_register("202699882K")', 'l-tool'); await sleep(400);
+  L('RESULT', 'NOT FOUND.', 'l-result');
+  L('TOOL  ', 'check_internal_iras_register("202677114D")', 'l-tool'); await sleep(400);
+  L('RESULT', 'NOT FOUND.', 'l-result'); await sleep(300);
+  L('FLAG  ', 'HALT — 3 newly incorporated Pte Ltds sharing identical unit on same date. Matches GST carousel / missing trader / shell network profile. Routing to Audit Investigation Agent.', 'l-flag');
+
+  routeCard('202655431G', 'risk', '⚠ Halted → Audit Investigation Agent', '');
+  routeCard('202699882K', 'risk', '⚠ Halted → Audit Investigation Agent', '');
+  routeCard('202677114D', 'risk', '⚠ Halted → Audit Investigation Agent', '');
+
+  addTriageCard(
+    'Shell Network Cluster — 3 Entities',
+    '202655431G · 202699882K · 202677114D',
+    'risk',
+    'Concurrent single-day registration at Yishun industrial unit. Apex Shell Logistics, Zenith Trade Singapore, Quantum Holding Group. Officer review required.',
+    'openRiskModal()'
+  );
+  riskCount++; document.getElementById('statRisk').textContent = riskCount;
+
+  await sleep(500); await logSep();
+  L('DONE  ', `Ingest complete. 4 UENs processed. 1 → Onboarding. 3 → High-Risk Audit queue. Awaiting officer decision.`, 'l-section');
+  setAgentStatus('Awaiting review', true);
+}
+
+// ─── MODALS ───────────────────────────────────────────────────────────
+function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
+document.getElementById('modalBg').addEventListener('click', e => { if (e.target === document.getElementById('modalBg')) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function openOnboardModal() {
+  document.getElementById('modalRef').textContent = 'IRAS-2026-07-4420';
+  document.getElementById('modalTitle').textContent = 'Onboarding Review — Alpha Tech Solutions Pte Ltd';
+  document.getElementById('modalBody').innerHTML = `
+    <div class="m-ok">
+      <span style="font-size:16px;flex-shrink:0;margin-top:1px">✅</span>
+      <div class="m-ok-body">Agent classified this as a <strong>legitimate new registration</strong>. Single entity, CBD address, no same-day clustering. Onboarding pipeline recommended pending officer sign-off.</div>
+    </div>
+    <div class="m-section">
+      <div class="m-section-head">Case Summary</div>
+      <div class="m-grid">
+        <div class="m-field"><div class="m-field-label">UEN</div><div class="m-field-value mono">202611223M</div></div>
+        <div class="m-field"><div class="m-field-label">Company</div><div class="m-field-value">Alpha Tech Solutions Pte Ltd</div></div>
+        <div class="m-field"><div class="m-field-label">Registration Date</div><div class="m-field-value">1 June 2026</div></div>
+        <div class="m-field"><div class="m-field-label">Registered Address</div><div class="m-field-value">16 Raffles Quay #20-01, S048616</div></div>
+        <div class="m-field"><div class="m-field-label">First YA Filing Due</div><div class="m-field-value">30 November 2027</div></div>
+        <div class="m-field"><div class="m-field-label">Agent Risk Rating</div><div class="m-field-value" style="color:var(--ok-mid);font-weight:700">Low — Proceed</div></div>
+      </div>
+    </div>
+    <div class="m-section">
+      <div class="m-section-head">Agent Reasoning</div>
+      <div class="m-brief">
+<span class="c-b">TOOL  </span><span class="c-w">check_internal_iras_register("202611223M")</span><br>
+<span class="c-g">RESULT</span> NOT FOUND — confirmed new entity, no prior IRAS record.<br>
+<span class="c-b">TOOL  </span><span class="c-w">detect_address_clustering("048616")</span><br>
+<span class="c-g">RESULT</span> 1 entity at postal 048616 on 2026-06-01. No clustering.<br>
+<span class="c-y">EVAL  </span> CBD location (Raffles Quay), sole registration on that date. Clean profile.<br>
+<span class="c-g">ACTION</span> Route to Tax Welcome Agent. First YA: YA 2027, due 30 Nov 2027.</div>
+    </div>
+    <div class="m-section">
+      <div class="m-section-head">Draft — Corporate Tax Onboarding Notice</div>
+      <div class="email-wrap">
+        <div class="email-meta-bar">
+          <div class="email-meta-row"><span class="email-meta-key">To</span><span class="email-meta-val">director@alphatechsolutions.sg</span></div>
+          <div class="email-meta-row"><span class="email-meta-key">CC</span><span class="email-meta-val">compliance@iras.gov.sg</span></div>
+          <div class="email-meta-row"><span class="email-meta-key">Subj</span><span class="email-meta-val">Corporate Income Tax Onboarding — Alpha Tech Solutions Pte Ltd (UEN: 202611223M)</span></div>
+        </div>
+        <textarea class="email-editor" id="emailOnboard">Dear Director,
+
+Congratulations on the successful registration of Alpha Tech Solutions Pte Ltd (UEN: 202611223M) with ACRA on 1 June 2026.
+
+This letter serves as your official onboarding notice from the Inland Revenue Authority of Singapore (IRAS).
+
+Key Compliance Milestones:
+  • First Year of Assessment (YA): YA 2027
+  • Corporate Income Tax (CIT) Filing Deadline: 30 November 2027
+  • GST Registration threshold: SGD 1 million in annual taxable turnover
+
+Please ensure your company maintains proper accounting records from the date of incorporation. You will be contacted separately regarding myTax Portal access and e-Filing obligations.
+
+For enquiries, contact the Corporate Tax Division at 1800-356-8622 or visit mytax.iras.gov.sg.
+
+Yours sincerely,
+Officer Lim T.
+Corporate Tax Division, IRAS</textarea>
+      </div>
+    </div>`;
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-ok" onclick="dispatchOnboard()">✓ Approve &amp; Send Onboarding Notice</button>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+
+function openRiskModal() {
+  document.getElementById('modalRef').textContent = 'IRAS-2026-07-4421';
+  document.getElementById('modalTitle').textContent = 'High-Risk Review — Shell Network Cluster';
+  document.getElementById('modalBody').innerHTML = `
+    <div class="m-alert">
+      <div class="m-alert-icon">🚨</div>
+      <div class="m-alert-body"><strong>AGENT HALT — Officer Action Required.</strong> Three private limited companies registered at the same industrial unit on the same date. Automated onboarding has been suspended. Both notices below must be reviewed before dispatch.</div>
+    </div>
+    <div class="m-section">
+      <div class="m-section-head">Clustered Entities</div>
+      <div class="m-table-wrap">
+        <table class="m-table">
+          <thead><tr><th>UEN</th><th>Company Name</th><th>Reg Date</th><th>Shared Address</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">202655431G</td><td>Apex Shell Logistics</td><td>2026-06-02</td><td>2 Yishun Industrial St 1, #04-12</td></tr>
+            <tr><td class="mono">202699882K</td><td>Zenith Trade Singapore</td><td>2026-06-02</td><td>2 Yishun Industrial St 1, #04-12</td></tr>
+            <tr><td class="mono">202677114D</td><td>Quantum Holding Group</td><td>2026-06-02</td><td>2 Yishun Industrial St 1, #04-12</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="m-section">
+      <div class="m-section-head">Agent Investigation Brief</div>
+      <div class="m-brief">
+<span class="c-b">TOOL  </span><span class="c-w">detect_address_clustering("618494")</span><br>
+<span class="c-r">FLAG  </span> 3 distinct entities at postal 618494, unit #04-12 on 2026-06-02.<br>
+<span class="c-r">FLAG  </span> Pattern matches known typology for:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(a) GST Missing Trader / Carousel Fraud (input tax claims)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(b) Shell company network for tax avoidance<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(c) Corporate layering / beneficial ownership concealment<br>
+<span class="c-y">NOTE  </span> None of 3 UENs found in IRAS Core Register. No director cross-ref available.<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;Industrial unit inconsistent with stated Pte Ltd trading activities.<br>
+<span class="c-r">ACTION</span> HALT onboarding. Flag to Audit Investigation Agent. Recommend dual notice:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;1. ACRA — request review hold + director disclosure<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;2. Registered directors — compliance information request</div>
+    </div>
+    <div class="m-section">
+      <div class="m-section-head">Draft 1 — Notification to ACRA Registry</div>
+      <div class="email-wrap">
+        <div class="email-meta-bar">
+          <div class="email-meta-row"><span class="email-meta-key">To</span><span class="email-meta-val">registry@acra.gov.sg</span></div>
+          <div class="email-meta-row"><span class="email-meta-key">CC</span><span class="email-meta-val">compliance@iras.gov.sg · audit@iras.gov.sg</span></div>
+          <div class="email-meta-row"><span class="email-meta-key">Subj</span><span class="email-meta-val">IRAS Compliance Flag — Suspected Shell Cluster (Ref: IRAS-2026-07-4421)</span></div>
+        </div>
+        <textarea class="email-editor" id="emailAcra">Dear ACRA Registry,
+
+IRAS Corporate Tax Division wishes to flag the following entities for your urgent attention:
+
+1. Apex Shell Logistics (UEN: 202655431G)
+2. Zenith Trade Singapore (UEN: 202699882K)
+3. Quantum Holding Group (UEN: 202677114D)
+
+All three companies were incorporated on 2 June 2026 at the identical address: 2 Yishun Industrial Street 1, #04-12, Singapore 618494.
+
+Our automated compliance screening has identified this cluster as matching known typologies for GST carousel fraud and shell company networks. None of the three entities appear in the IRAS Core Register, and no director information is available for cross-referencing.
+
+We request that ACRA:
+  (a) Place a compliance review hold on these three UENs
+  (b) Share registered director identification details for IRAS cross-referencing
+  (c) Flag for joint investigation under the Inter-Agency Compliance Protocol
+
+IRAS Reference: IRAS-2026-07-4421
+
+Yours sincerely,
+Officer Lim T.
+Corporate Tax Division, IRAS · Tel: 6351-3883</textarea>
+      </div>
+    </div>
+    <div class="m-section">
+      <div class="m-section-head">Draft 2 — Notice to Registered Directors</div>
+      <div class="email-wrap">
+        <div class="email-meta-bar">
+          <div class="email-meta-row"><span class="email-meta-key">To</span><span class="email-meta-val">[Directors of UENs 202655431G · 202699882K · 202677114D — pending ACRA director disclosure]</span></div>
+          <div class="email-meta-row"><span class="email-meta-key">Subj</span><span class="email-meta-val">IRAS Notice — Compliance Information Request (Ref: IRAS-2026-07-4421)</span></div>
+        </div>
+        <textarea class="email-editor" id="emailDirectors">Dear Director(s),
+
+The Inland Revenue Authority of Singapore (IRAS) is conducting a compliance review of the following companies in which you are a registered director:
+
+  • Apex Shell Logistics (UEN: 202655431G)
+  • Zenith Trade Singapore (UEN: 202699882K)
+  • Quantum Holding Group (UEN: 202677114D)
+
+IRAS notes that all three entities were incorporated on 2 June 2026 at the same registered address. As part of our compliance protocol, we require the following information within 14 days of this notice:
+
+  1. Intended business activities of each company
+  2. Identity of beneficial owners (if different from registered directors)
+  3. Source of incorporation capital for each entity
+  4. Commercial rationale for the shared registered address
+
+Failure to respond within 14 days may result in further compliance action under the Income Tax Act 1947 and referral to the Commercial Affairs Department.
+
+IRAS Reference: IRAS-2026-07-4421
+
+Yours sincerely,
+Officer Lim T.
+Corporate Tax Division, IRAS</textarea>
+      </div>
+    </div>`;
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-ghost" onclick="requestMoreInfo()">Request More Info</button>
+    <button class="btn btn-danger" onclick="dispatchRisk()">⚠ Approve &amp; Dispatch Both Notices</button>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+
+function dispatchOnboard() {
+  closeModal();
+  // Remove the ok triage card
+  document.querySelector('.triage-card.tc-ok')?.remove();
+  updateStats(-1, 0);
+  logLine('ACTIO ', 'Officer Lim T. approved onboarding notice for UEN 202611223M at ' + ts() + ' SGT.', 'l-ok');
+  showToast('Onboarding notice sent to Alpha Tech Solutions Pte Ltd.', '✅');
+}
+
+function dispatchRisk() {
+  closeModal();
+  document.querySelector('.triage-card.tc-risk')?.remove();
+  updateStats(0, -1);
+  logLine('ACTIO ', 'Officer Lim T. dispatched ACRA notification + director notice. Ref IRAS-2026-07-4421 at ' + ts() + ' SGT.', 'l-ok');
+  showToast('Dual notices dispatched. Ref: IRAS-2026-07-4421.', '🚨');
+}
+
+function requestMoreInfo() {
+  closeModal();
+  logLine('ACTIO ', 'Officer Lim T. requested additional information from ACRA for cluster case IRAS-2026-07-4421.', 'l-thought');
+  showToast('Information request sent to ACRA. Case held pending response.', 'ℹ️');
+}
+
+// ─── TOAST ─────────────────────────────────────────────────────────────
+function showToast(msg, icon = '✓') {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIcon').textContent = icon;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+</script>
